@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WorkTracker v7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Strict Reset for Layout Safety */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #334155;
+            overflow-x: hidden; /* Critical: Prevent horizontal scroll */
+            width: 100%;
+        }
+
+        /* Prevent input zoom on iOS */
+        input, select, textarea {
+            font-size: 16px !important;
+        }
+
+        /* Safe Container */
+        .safe-container {
+            width: 100%;
+            padding: 0 16px; /* consistent side padding */
+        }
+        
+        /* Input Styling Fixes */
+        .input-safe {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            background-color: #fff;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .input-safe:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+    </style>
+</head>
+<body class="pb-32">
+
+    <!-- Sticky Nav -->
+    <nav class="bg-white sticky top-0 z-50 border-b border-slate-200 shadow-sm">
+        <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="bg-slate-800 text-white w-8 h-8 rounded-lg flex items-center justify-center">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <h1 class="font-bold text-lg text-slate-800 tracking-tight">WorkTracker</h1>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <!-- Filter Button -->
+                <div class="relative group">
+                    <button id="filterBtn" class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-filter text-sm"></i>
+                    </button>
+                    <!-- Filter Dropdown -->
+                    <div class="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 hidden group-hover:block group-focus-within:block p-2 z-50">
+                        <div class="text-xs font-bold text-slate-400 uppercase px-3 py-2">Filter View / Export</div>
+                        <button onclick="setFilter('ALL')" class="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 rounded-lg font-medium text-slate-700">
+                            Show All
+                        </button>
+                        <div id="projectFilterList" class="mt-1 border-t border-slate-100 pt-1">
+                            <!-- Project names injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Button -->
+                <button onclick="toggleSettings()" class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                    <i class="fa-solid fa-gear text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Settings Modal -->
+    <div id="settingsPanel" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-[fadeIn_0.2s_ease-out]">
+            <h3 class="font-bold text-lg text-slate-800 mb-4">Settings</h3>
+            <div class="mb-5">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Default Hourly Rate (₱)</label>
+                <input type="number" id="defaultRateInput" placeholder="e.g. 500" class="input-safe">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="toggleSettings()" class="px-4 py-2 text-slate-500 font-medium">Cancel</button>
+                <button onclick="saveSettings()" class="bg-slate-900 text-white px-6 py-2 rounded-lg font-medium shadow-lg">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-xl mx-auto safe-container py-6 space-y-6">
+
+        <!-- Stats Card -->
+        <div class="bg-slate-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div class="relative z-10">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Earnings</p>
+                        <h2 class="text-3xl font-bold break-all leading-none" id="displayTotalEarnings">₱0.00</h2>
+                    </div>
+                    <div id="activeFilterBadge" class="hidden bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                        Filtered
+                    </div>
+                </div>
+                
+                <div class="mt-5 flex gap-6 border-t border-slate-700 pt-4">
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Hours</span>
+                        <span class="font-semibold text-lg" id="displayTotalHours">0h</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Entries</span>
+                        <span class="font-semibold text-lg" id="entryCount">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Form -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-slate-50 px-5 py-3 border-b border-slate-100 flex justify-between items-center">
+                <span class="font-semibold text-slate-700 text-sm">New Entry</span>
+                <span class="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm" id="todayDate">Today</span>
+            </div>
+            
+            <form id="logForm" class="p-5 space-y-5">
+                
+                <!-- Project (Optional) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Project Name (Optional)</label>
+                    <input list="projectHistory" type="text" id="description" placeholder="e.g. Website Design" class="input-safe">
+                    <datalist id="projectHistory"></datalist>
+                </div>
+
+                <!-- Date & Rate -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Date</label>
+                        <input type="date" id="date" required class="input-safe bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Hourly Rate (₱)</label>
+                        <input type="number" id="rate" step="0.01" required placeholder="0.00" class="input-safe">
+                    </div>
+                </div>
+
+                <!-- Time Blocks -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Time Sessions</label>
+                    
+                    <div id="timeBlocksContainer" class="space-y-4">
+                        <!-- Blocks injected here -->
+                    </div>
+                    
+                    <button type="button" onclick="addTimeBlock()" class="mt-4 w-full py-3 bg-white border border-slate-200 rounded-lg text-indigo-600 text-sm font-semibold shadow-sm hover:bg-indigo-50 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus-circle"></i> Add Session
+                    </button>
+                </div>
+
+                <!-- Footer -->
+                <div class="pt-2">
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <span class="text-sm text-slate-500 font-medium">Est. Pay</span>
+                        <span id="previewCalc" class="font-bold text-slate-800 text-xl">₱0.00</span>
+                    </div>
+
+                    <button type="submit" 
+                        class="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-slate-200 transform active:scale-[0.98] transition flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Save Entry
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- History & Export Section -->
+        <div>
+            <div class="flex justify-between items-center px-1 mb-3 pt-2">
+                <h3 class="font-bold text-slate-800 text-lg" id="historyTitle">Recent History</h3>
+                <div class="flex gap-2">
+                    <button onclick="exportData('csv')" class="text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg font-medium shadow-sm">
+                        Export CSV
+                    </button>
+                    <button onclick="exportData('pdf')" class="text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg font-medium shadow-sm">
+                        Export PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- List -->
+            <div id="entriesList" class="space-y-3 pb-20"></div>
+        </div>
+
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 opacity-0 pointer-events-none transition-all duration-300 z-50 whitespace-nowrap">
+        <i class="fa-solid fa-circle-check text-green-400"></i>
+        <span id="toastMsg" class="font-medium text-sm">Saved</span>
+    </div>
+
+    <script>
+        // --- State ---
+        const STORE_KEY = 'workLogEntries_v7';
+        const SETTINGS_KEY = 'workLogSettings_v7';
+        
+        let entries = JSON.parse(localStorage.getItem(STORE_KEY)) || [];
+        let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || { defaultRate: '' };
+        let currentFilter = 'ALL';
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('date').valueAsDate = new Date();
+            document.getElementById('todayDate').innerText = dayjs().format('MMM D');
+            
+            // Default Rate Logic
+            if (settings.defaultRate) {
+                document.getElementById('rate').value = settings.defaultRate;
+                document.getElementById('defaultRateInput').value = settings.defaultRate;
+            } else if(entries.length > 0) {
+                document.getElementById('rate').value = entries[0].rate;
+            }
+
+            // Expose functions to window to guarantee onclick works
+            window.deleteEntry = deleteEntry;
+            
+            addTimeBlock();
+            refreshUI();
+        });
+
+        // --- UI Logic ---
+        function toggleSettings() { 
+            const p = document.getElementById('settingsPanel');
+            p.classList.toggle('hidden'); 
+        }
+
+        function saveSettings() {
+            const val = document.getElementById('defaultRateInput').value;
+            settings.defaultRate = val;
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            document.getElementById('rate').value = val;
+            calculatePreview();
+            toggleSettings();
+            showToast('Default Rate Saved');
+        }
+
+        function setFilter(projectName) {
+            currentFilter = projectName;
+            const badge = document.getElementById('activeFilterBadge');
+            const title = document.getElementById('historyTitle');
+            
+            if(projectName === 'ALL') {
+                badge.classList.add('hidden');
+                title.innerText = "Recent History";
+            } else {
+                badge.classList.remove('hidden');
+                badge.innerText = projectName;
+                title.innerText = projectName;
+            }
+            renderEntries();
+            updateStats();
+        }
+
+        // --- Time Block Logic (Safe Stacked) ---
+        function addTimeBlock(startTime = '', endTime = '') {
+            const id = 'block-' + Date.now() + Math.random().toString(16).slice(2);
+            const container = document.getElementById('timeBlocksContainer');
+            
+            const div = document.createElement('div');
+            div.className = "bg-white p-3 rounded-lg border border-slate-200 shadow-sm relative animate-[fadeIn_0.3s_ease-out]";
+            div.id = id;
+            
+            // Clean Stacked Layout
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Session</span>
+                    <button type="button" onclick="removeTimeBlock('${id}')" class="text-slate-400 hover:text-red-500 p-1">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">Start</label>
+                        <input type="time" name="start[]" value="${startTime}" required onchange="calculatePreview()" class="input-safe bg-slate-50 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">End</label>
+                        <input type="time" name="end[]" value="${endTime}" required onchange="calculatePreview()" class="input-safe bg-slate-50 py-2">
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+            updateRemoveButtons();
+        }
+
+        function removeTimeBlock(id) {
+            const el = document.getElementById(id);
+            if(el) { el.remove(); updateRemoveButtons(); calculatePreview(); }
+        }
+
+        function updateRemoveButtons() {
+            const blocks = document.querySelectorAll('div[id^="block-"]');
+            const btns = document.querySelectorAll('div[id^="block-"] button[type="button"]');
+            
+            if(blocks.length === 1) {
+                btns[0].style.visibility = 'hidden';
+            } else {
+                btns.forEach(b => b.style.visibility = 'visible');
+            }
+        }
+
+        // --- Core Calculations ---
+        function getDuration() {
+            const s = document.getElementsByName('start[]');
+            const e = document.getElementsByName('end[]');
+            let hrs = 0;
+            for(let i=0; i<s.length; i++) {
+                if(s[i].value && e[i].value) {
+                    const start = dayjs(`2000-01-01 ${s[i].value}`);
+                    let end = dayjs(`2000-01-01 ${e[i].value}`);
+                    if(end.isBefore(start)) end = end.add(1, 'day');
+                    hrs += end.diff(start, 'hour', true);
+                }
+            }
+            return hrs;
+        }
+
+        function calculatePreview() {
+            const hrs = getDuration();
+            const rate = parseFloat(document.getElementById('rate').value) || 0;
+            const total = hrs * rate;
+            document.getElementById('previewCalc').innerHTML = 
+                `<span class="text-sm font-normal text-slate-500 mr-2">${hrs.toFixed(2)}h •</span> ₱${total.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        }
+
+        // --- Save Logic ---
+        document.getElementById('logForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const startEls = document.getElementsByName('start[]');
+            const endEls = document.getElementsByName('end[]');
+            const blocks = [];
+            for(let i=0; i<startEls.length; i++) {
+                blocks.push({ start: startEls[i].value, end: endEls[i].value });
+            }
+
+            const hrs = getDuration();
+            const rate = parseFloat(document.getElementById('rate').value);
+            
+            // Optional Project Logic
+            let desc = document.getElementById('description').value.trim();
+            if(!desc) desc = "General";
+
+            const entry = {
+                id: Date.now(),
+                date: document.getElementById('date').value,
+                timeBlocks: blocks,
+                duration: hrs,
+                rate: rate,
+                earnings: hrs * rate,
+                description: desc
+            };
+
+            entries.unshift(entry);
+            localStorage.setItem(STORE_KEY, JSON.stringify(entries));
+            
+            showToast('Entry Saved');
+            refreshUI();
+            
+            // Reset Form
+            document.getElementById('description').value = '';
+            document.getElementById('previewCalc').innerHTML = '₱0.00';
+            document.getElementById('timeBlocksContainer').innerHTML = '';
+            addTimeBlock();
+            if(settings.defaultRate) document.getElementById('rate').value = settings.defaultRate;
+        });
+
+        // --- History & Data ---
+        function getFilteredEntries() {
+            if (currentFilter === 'ALL') return entries;
+            return entries.filter(e => e.description === currentFilter);
+        }
+
+        function refreshUI() {
+            renderEntries();
+            updateStats();
+            updateFilterList();
+            updateAutocomplete();
+        }
+
+        function deleteEntry(id) {
+            if(confirm('Delete this entry permanently?')) {
+                entries = entries.filter(e => e.id !== id);
+                localStorage.setItem(STORE_KEY, JSON.stringify(entries));
+                refreshUI(); // This re-renders the list, effectively removing the item
+            }
+        }
+        
+        function clearData() {
+            if(confirm('Delete ALL history?')) {
+                entries = [];
+                localStorage.setItem(STORE_KEY, JSON.stringify(entries));
+                refreshUI();
+            }
+        }
+
+        function renderEntries() {
+            const list = document.getElementById('entriesList');
+            list.innerHTML = '';
+            
+            const visibleEntries = getFilteredEntries();
+
+            if(visibleEntries.length === 0) {
+                list.innerHTML = `<div class="text-center py-12 text-slate-400 text-sm">No entries found.</div>`;
+                return;
+            }
+
+            const grouped = {};
+            visibleEntries.forEach(e => {
+                if(!grouped[e.date]) grouped[e.date] = [];
+                grouped[e.date].push(e);
+            });
+
+            Object.keys(grouped).forEach(date => {
+                const header = document.createElement('div');
+                header.className = "text-xs font-bold text-slate-400 uppercase tracking-widest mt-6 mb-2 ml-1";
+                header.innerText = dayjs(date).format('dddd, MMM D');
+                list.appendChild(header);
+
+                grouped[date].forEach(e => {
+                    const div = document.createElement('div');
+                    div.className = "bg-white p-4 rounded-xl border border-slate-100 shadow-sm mb-3";
+                    
+                    const blockTags = e.timeBlocks ? e.timeBlocks.map(b => 
+                        `<span class="text-[10px] bg-slate-50 border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded mr-1">
+                            ${formatTime(b.start)}-${formatTime(b.end)}
+                         </span>`
+                    ).join('') : '';
+
+                    div.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-slate-800 text-sm">${e.description}</h4>
+                            <div class="font-bold text-slate-800 text-base">₱${e.earnings.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                        </div>
+                        <div class="mb-3 flex flex-wrap gap-1">${blockTags}</div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-50">
+                            <span class="text-xs text-slate-400 font-medium">${e.duration.toFixed(2)} hrs • ₱${e.rate}/h</span>
+                            <button onclick="deleteEntry(${e.id})" class="text-slate-300 hover:text-red-500 px-2">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            });
+        }
+
+        function updateFilterList() {
+            const list = document.getElementById('projectFilterList');
+            list.innerHTML = '';
+            
+            const projects = [...new Set(entries.map(e => e.description))].sort();
+            
+            projects.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left px-3 py-2 text-sm hover:bg-slate-50 rounded-lg text-slate-600 truncate";
+                btn.innerText = p;
+                btn.onclick = () => setFilter(p);
+                list.appendChild(btn);
+            });
+        }
+        
+        function updateAutocomplete() {
+            const dl = document.getElementById('projectHistory');
+            dl.innerHTML = '';
+            const projects = [...new Set(entries.map(e => e.description))];
+            projects.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                dl.appendChild(opt);
+            });
+        }
+
+        function updateStats() {
+            const visible = getFilteredEntries();
+            const e = visible.reduce((a,c)=>a+c.earnings,0);
+            const h = visible.reduce((a,c)=>a+c.duration,0);
+            document.getElementById('displayTotalEarnings').innerText = '₱' + e.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('displayTotalHours').innerText = h.toFixed(2) + 'h';
+            document.getElementById('entryCount').innerText = visible.length;
+        }
+
+        // --- Export ---
+        function exportData(type) {
+            const data = getFilteredEntries();
+            if(data.length === 0) return showToast('No data to export');
+
+            const filename = `WorkLog_${currentFilter}_${dayjs().format('YYYY-MM-DD')}`;
+
+            if(type === 'csv') {
+                let csv = "Date,Project,Hours,Earnings,Blocks\n";
+                data.forEach(e => {
+                    const blks = e.timeBlocks.map(b=>`${formatTime(b.start)}-${formatTime(b.end)}`).join('|');
+                    csv += `${e.date},"${e.description.replace(/"/g,'""')}",${e.duration.toFixed(2)},${e.earnings.toFixed(2)},"${blks}"\n`;
+                });
+                const blob = new Blob([csv], {type: 'text/csv'});
+                downloadBlob(blob, filename + '.csv');
+            } else {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                doc.setFontSize(18);
+                doc.text("Work Log Report", 14, 20);
+                
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                doc.text(`Project Filter: ${currentFilter}`, 14, 26);
+                doc.text(`Generated: ${dayjs().format('MMM D, YYYY')}`, 14, 31);
+                
+                const body = data.map(e => {
+                    const blks = e.timeBlocks.map(b=>`${formatTime(b.start)} - ${formatTime(b.end)}`).join('\n');
+                    return [e.date, e.description, blks, e.duration.toFixed(2), 'P' + e.earnings.toFixed(2)];
+                });
+                
+                doc.autoTable({
+                    startY: 38,
+                    head: [['Date','Project','Sessions','Hrs','Pay']],
+                    body: body,
+                    styles: { fontSize: 9 },
+                    foot: [['','','Total', data.reduce((a,b)=>a+b.duration,0).toFixed(2), 'P' + data.reduce((a,b)=>a+b.earnings,0).toFixed(2)]]
+                });
+                doc.save(filename + '.pdf');
+            }
+        }
+
+        function formatTime(t) { return dayjs(`2000-01-01 ${t}`).format('h:mm A'); }
+        function downloadBlob(blob, name) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = name;
+            a.click();
+        }
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = m;
+            t.classList.remove('opacity-0');
+            setTimeout(()=>t.classList.add('opacity-0'), 2500);
+        }
+    </script>
+</body>
+</html>
+
