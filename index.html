@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WorkTracker v7</title>
+    <title>WorkTracker v8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
@@ -21,22 +21,19 @@
             font-family: 'Inter', sans-serif;
             background-color: #f1f5f9;
             color: #334155;
-            overflow-x: hidden; /* Critical: Prevent horizontal scroll */
+            overflow-x: hidden;
             width: 100%;
         }
 
-        /* Prevent input zoom on iOS */
         input, select, textarea {
             font-size: 16px !important;
         }
 
-        /* Safe Container */
         .safe-container {
             width: 100%;
-            padding: 0 16px; /* consistent side padding */
+            padding: 0 16px;
         }
         
-        /* Input Styling Fixes */
         .input-safe {
             width: 100%;
             border: 1px solid #e2e8f0;
@@ -50,11 +47,19 @@
             border-color: #6366f1;
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
+
+        /* Paid Entry Style: slightly dimmed */
+        .entry-paid {
+            opacity: 0.75;
+            background-color: #f8fafc !important;
+        }
+        .entry-paid:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="pb-32">
 
-    <!-- Sticky Nav -->
     <nav class="bg-white sticky top-0 z-50 border-b border-slate-200 shadow-sm">
         <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -65,24 +70,19 @@
             </div>
             
             <div class="flex items-center gap-2">
-                <!-- Filter Button -->
                 <div class="relative group">
                     <button id="filterBtn" class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
                         <i class="fa-solid fa-filter text-sm"></i>
                     </button>
-                    <!-- Filter Dropdown -->
                     <div class="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 hidden group-hover:block group-focus-within:block p-2 z-50">
                         <div class="text-xs font-bold text-slate-400 uppercase px-3 py-2">Filter View / Export</div>
                         <button onclick="setFilter('ALL')" class="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 rounded-lg font-medium text-slate-700">
                             Show All
                         </button>
-                        <div id="projectFilterList" class="mt-1 border-t border-slate-100 pt-1">
-                            <!-- Project names injected here -->
-                        </div>
+                        <div id="projectFilterList" class="mt-1 border-t border-slate-100 pt-1"></div>
                     </div>
                 </div>
 
-                <!-- Settings Button -->
                 <button onclick="toggleSettings()" class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
                     <i class="fa-solid fa-gear text-sm"></i>
                 </button>
@@ -90,7 +90,6 @@
         </div>
     </nav>
 
-    <!-- Settings Modal -->
     <div id="settingsPanel" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-[fadeIn_0.2s_ease-out]">
             <h3 class="font-bold text-lg text-slate-800 mb-4">Settings</h3>
@@ -105,36 +104,33 @@
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="max-w-xl mx-auto safe-container py-6 space-y-6">
 
-        <!-- Stats Card -->
         <div class="bg-slate-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
             <div class="relative z-10">
-                <div class="flex justify-between items-start">
+                <div class="flex justify-between items-start mb-4">
                     <div>
-                        <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Earnings</p>
-                        <h2 class="text-3xl font-bold break-all leading-none" id="displayTotalEarnings">₱0.00</h2>
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Pending Pay (Unpaid)</p>
+                        <h2 class="text-3xl font-bold break-all leading-none text-yellow-400" id="displayPendingEarnings">₱0.00</h2>
                     </div>
                     <div id="activeFilterBadge" class="hidden bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
                         Filtered
                     </div>
                 </div>
                 
-                <div class="mt-5 flex gap-6 border-t border-slate-700 pt-4">
+                <div class="flex gap-6 border-t border-slate-700 pt-4">
                     <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Hours</span>
-                        <span class="font-semibold text-lg" id="displayTotalHours">0h</span>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Total Earned</span>
+                        <span class="font-semibold text-lg" id="displayTotalEarnings">₱0.00</span>
                     </div>
                     <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Entries</span>
-                        <span class="font-semibold text-lg" id="entryCount">0</span>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Total Hours</span>
+                        <span class="font-semibold text-lg" id="displayTotalHours">0h</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Input Form -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="bg-slate-50 px-5 py-3 border-b border-slate-100 flex justify-between items-center">
                 <span class="font-semibold text-slate-700 text-sm">New Entry</span>
@@ -143,14 +139,12 @@
             
             <form id="logForm" class="p-5 space-y-5">
                 
-                <!-- Project (Optional) -->
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Project Name (Optional)</label>
                     <input list="projectHistory" type="text" id="description" placeholder="e.g. Website Design" class="input-safe">
                     <datalist id="projectHistory"></datalist>
                 </div>
 
-                <!-- Date & Rate -->
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Date</label>
@@ -162,20 +156,14 @@
                     </div>
                 </div>
 
-                <!-- Time Blocks -->
                 <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Time Sessions</label>
-                    
-                    <div id="timeBlocksContainer" class="space-y-4">
-                        <!-- Blocks injected here -->
-                    </div>
-                    
+                    <div id="timeBlocksContainer" class="space-y-4"></div>
                     <button type="button" onclick="addTimeBlock()" class="mt-4 w-full py-3 bg-white border border-slate-200 rounded-lg text-indigo-600 text-sm font-semibold shadow-sm hover:bg-indigo-50 transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-plus-circle"></i> Add Session
                     </button>
                 </div>
 
-                <!-- Footer -->
                 <div class="pt-2">
                     <div class="flex justify-between items-center mb-3 px-1">
                         <span class="text-sm text-slate-500 font-medium">Est. Pay</span>
@@ -190,7 +178,6 @@
             </form>
         </div>
 
-        <!-- History & Export Section -->
         <div>
             <div class="flex justify-between items-center px-1 mb-3 pt-2">
                 <h3 class="font-bold text-slate-800 text-lg" id="historyTitle">Recent History</h3>
@@ -204,13 +191,11 @@
                 </div>
             </div>
 
-            <!-- List -->
             <div id="entriesList" class="space-y-3 pb-20"></div>
         </div>
 
     </div>
 
-    <!-- Toast -->
     <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 opacity-0 pointer-events-none transition-all duration-300 z-50 whitespace-nowrap">
         <i class="fa-solid fa-circle-check text-green-400"></i>
         <span id="toastMsg" class="font-medium text-sm">Saved</span>
@@ -230,7 +215,6 @@
             document.getElementById('date').valueAsDate = new Date();
             document.getElementById('todayDate').innerText = dayjs().format('MMM D');
             
-            // Default Rate Logic
             if (settings.defaultRate) {
                 document.getElementById('rate').value = settings.defaultRate;
                 document.getElementById('defaultRateInput').value = settings.defaultRate;
@@ -238,8 +222,9 @@
                 document.getElementById('rate').value = entries[0].rate;
             }
 
-            // Expose functions to window to guarantee onclick works
+            // Expose Global Functions
             window.deleteEntry = deleteEntry;
+            window.togglePaid = togglePaid; // New function
             
             addTimeBlock();
             refreshUI();
@@ -247,8 +232,7 @@
 
         // --- UI Logic ---
         function toggleSettings() { 
-            const p = document.getElementById('settingsPanel');
-            p.classList.toggle('hidden'); 
+            document.getElementById('settingsPanel').classList.toggle('hidden'); 
         }
 
         function saveSettings() {
@@ -278,7 +262,7 @@
             updateStats();
         }
 
-        // --- Time Block Logic (Safe Stacked) ---
+        // --- Time Block Logic ---
         function addTimeBlock(startTime = '', endTime = '') {
             const id = 'block-' + Date.now() + Math.random().toString(16).slice(2);
             const container = document.getElementById('timeBlocksContainer');
@@ -287,7 +271,6 @@
             div.className = "bg-white p-3 rounded-lg border border-slate-200 shadow-sm relative animate-[fadeIn_0.3s_ease-out]";
             div.id = id;
             
-            // Clean Stacked Layout
             div.innerHTML = `
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Session</span>
@@ -306,7 +289,6 @@
                     </div>
                 </div>
             `;
-            
             container.appendChild(div);
             updateRemoveButtons();
         }
@@ -319,12 +301,8 @@
         function updateRemoveButtons() {
             const blocks = document.querySelectorAll('div[id^="block-"]');
             const btns = document.querySelectorAll('div[id^="block-"] button[type="button"]');
-            
-            if(blocks.length === 1) {
-                btns[0].style.visibility = 'hidden';
-            } else {
-                btns.forEach(b => b.style.visibility = 'visible');
-            }
+            if(blocks.length === 1) btns[0].style.visibility = 'hidden';
+            else btns.forEach(b => b.style.visibility = 'visible');
         }
 
         // --- Core Calculations ---
@@ -364,8 +342,6 @@
 
             const hrs = getDuration();
             const rate = parseFloat(document.getElementById('rate').value);
-            
-            // Optional Project Logic
             let desc = document.getElementById('description').value.trim();
             if(!desc) desc = "General";
 
@@ -376,7 +352,8 @@
                 duration: hrs,
                 rate: rate,
                 earnings: hrs * rate,
-                description: desc
+                description: desc,
+                isPaid: false // Default to unpaid
             };
 
             entries.unshift(entry);
@@ -385,7 +362,6 @@
             showToast('Entry Saved');
             refreshUI();
             
-            // Reset Form
             document.getElementById('description').value = '';
             document.getElementById('previewCalc').innerHTML = '₱0.00';
             document.getElementById('timeBlocksContainer').innerHTML = '';
@@ -406,17 +382,19 @@
             updateAutocomplete();
         }
 
+        function togglePaid(id) {
+            const entry = entries.find(e => e.id === id);
+            if(entry) {
+                // Toggle status
+                entry.isPaid = !entry.isPaid;
+                localStorage.setItem(STORE_KEY, JSON.stringify(entries));
+                refreshUI(); // Re-render to update UI and stats
+            }
+        }
+
         function deleteEntry(id) {
             if(confirm('Delete this entry permanently?')) {
                 entries = entries.filter(e => e.id !== id);
-                localStorage.setItem(STORE_KEY, JSON.stringify(entries));
-                refreshUI(); // This re-renders the list, effectively removing the item
-            }
-        }
-        
-        function clearData() {
-            if(confirm('Delete ALL history?')) {
-                entries = [];
                 localStorage.setItem(STORE_KEY, JSON.stringify(entries));
                 refreshUI();
             }
@@ -446,9 +424,21 @@
                 list.appendChild(header);
 
                 grouped[date].forEach(e => {
-                    const div = document.createElement('div');
-                    div.className = "bg-white p-4 rounded-xl border border-slate-100 shadow-sm mb-3";
+                    // Check if paid (undefined treats as false)
+                    const isPaid = e.isPaid === true;
                     
+                    const div = document.createElement('div');
+                    div.className = `bg-white p-4 rounded-xl border border-slate-100 shadow-sm mb-3 relative transition-all ${isPaid ? 'entry-paid' : ''}`;
+                    
+                    // Badge Logic
+                    const badge = isPaid 
+                        ? `<span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-green-200">PAID</span>`
+                        : `<span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">UNPAID</span>`;
+                    
+                    const toggleBtn = isPaid
+                        ? `<button onclick="togglePaid(${e.id})" class="text-green-500 hover:text-green-600 flex items-center gap-1 text-xs font-medium border border-green-200 bg-green-50 px-2 py-1 rounded-md"><i class="fa-solid fa-check-circle"></i> Paid</button>`
+                        : `<button onclick="togglePaid(${e.id})" class="text-slate-500 hover:text-indigo-600 flex items-center gap-1 text-xs font-medium border border-slate-200 bg-white px-2 py-1 rounded-md"><i class="fa-regular fa-circle"></i> Mark Paid</button>`;
+
                     const blockTags = e.timeBlocks ? e.timeBlocks.map(b => 
                         `<span class="text-[10px] bg-slate-50 border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded mr-1">
                             ${formatTime(b.start)}-${formatTime(b.end)}
@@ -457,15 +447,23 @@
 
                     div.innerHTML = `
                         <div class="flex justify-between items-start mb-2">
-                            <h4 class="font-bold text-slate-800 text-sm">${e.description}</h4>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-bold text-slate-800 text-sm">${e.description}</h4>
+                                ${badge}
+                            </div>
                             <div class="font-bold text-slate-800 text-base">₱${e.earnings.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
                         </div>
                         <div class="mb-3 flex flex-wrap gap-1">${blockTags}</div>
-                        <div class="flex justify-between items-center pt-2 border-t border-slate-50">
+                        
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-100">
                             <span class="text-xs text-slate-400 font-medium">${e.duration.toFixed(2)} hrs • ₱${e.rate}/h</span>
-                            <button onclick="deleteEntry(${e.id})" class="text-slate-300 hover:text-red-500 px-2">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
+                            
+                            <div class="flex gap-2">
+                                ${toggleBtn}
+                                <button onclick="deleteEntry(${e.id})" class="text-slate-300 hover:text-red-500 px-1">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
                         </div>
                     `;
                     list.appendChild(div);
@@ -476,9 +474,7 @@
         function updateFilterList() {
             const list = document.getElementById('projectFilterList');
             list.innerHTML = '';
-            
             const projects = [...new Set(entries.map(e => e.description))].sort();
-            
             projects.forEach(p => {
                 const btn = document.createElement('button');
                 btn.className = "w-full text-left px-3 py-2 text-sm hover:bg-slate-50 rounded-lg text-slate-600 truncate";
@@ -501,11 +497,15 @@
 
         function updateStats() {
             const visible = getFilteredEntries();
-            const e = visible.reduce((a,c)=>a+c.earnings,0);
-            const h = visible.reduce((a,c)=>a+c.duration,0);
-            document.getElementById('displayTotalEarnings').innerText = '₱' + e.toLocaleString('en-US', {minimumFractionDigits: 2});
-            document.getElementById('displayTotalHours').innerText = h.toFixed(2) + 'h';
-            document.getElementById('entryCount').innerText = visible.length;
+            const total = visible.reduce((a,c)=>a+c.earnings,0);
+            const hours = visible.reduce((a,c)=>a+c.duration,0);
+            
+            // Calculate Pending (Unpaid)
+            const pending = visible.filter(e => !e.isPaid).reduce((a,c)=>a+c.earnings, 0);
+
+            document.getElementById('displayTotalEarnings').innerText = '₱' + total.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('displayPendingEarnings').innerText = '₱' + pending.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('displayTotalHours').innerText = hours.toFixed(2) + 'h';
         }
 
         // --- Export ---
@@ -516,10 +516,11 @@
             const filename = `WorkLog_${currentFilter}_${dayjs().format('YYYY-MM-DD')}`;
 
             if(type === 'csv') {
-                let csv = "Date,Project,Hours,Earnings,Blocks\n";
+                let csv = "Date,Project,Status,Hours,Earnings,Blocks\n";
                 data.forEach(e => {
+                    const status = e.isPaid ? 'PAID' : 'UNPAID';
                     const blks = e.timeBlocks.map(b=>`${formatTime(b.start)}-${formatTime(b.end)}`).join('|');
-                    csv += `${e.date},"${e.description.replace(/"/g,'""')}",${e.duration.toFixed(2)},${e.earnings.toFixed(2)},"${blks}"\n`;
+                    csv += `${e.date},"${e.description.replace(/"/g,'""')}",${status},${e.duration.toFixed(2)},${e.earnings.toFixed(2)},"${blks}"\n`;
                 });
                 const blob = new Blob([csv], {type: 'text/csv'});
                 downloadBlob(blob, filename + '.csv');
@@ -537,15 +538,15 @@
                 
                 const body = data.map(e => {
                     const blks = e.timeBlocks.map(b=>`${formatTime(b.start)} - ${formatTime(b.end)}`).join('\n');
-                    return [e.date, e.description, blks, e.duration.toFixed(2), 'P' + e.earnings.toFixed(2)];
+                    return [e.date, e.description, e.isPaid ? 'PAID' : 'UNPAID', blks, e.duration.toFixed(2), 'P' + e.earnings.toFixed(2)];
                 });
                 
                 doc.autoTable({
                     startY: 38,
-                    head: [['Date','Project','Sessions','Hrs','Pay']],
+                    head: [['Date','Project','Status','Sessions','Hrs','Pay']],
                     body: body,
                     styles: { fontSize: 9 },
-                    foot: [['','','Total', data.reduce((a,b)=>a+b.duration,0).toFixed(2), 'P' + data.reduce((a,b)=>a+b.earnings,0).toFixed(2)]]
+                    foot: [['','','','Total', data.reduce((a,b)=>a+b.duration,0).toFixed(2), 'P' + data.reduce((a,b)=>a+b.earnings,0).toFixed(2)]]
                 });
                 doc.save(filename + '.pdf');
             }
@@ -567,4 +568,3 @@
     </script>
 </body>
 </html>
-
