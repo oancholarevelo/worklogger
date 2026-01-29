@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WorkTracker v8.1</title>
+    <title>WorkTracker v8.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
@@ -36,7 +36,6 @@
         
         .input-safe {
             width: 100%;
-            /* Added max-width and min-width to prevent overflow */
             max-width: 100%; 
             min-width: 0;
             border: 1px solid #e2e8f0;
@@ -45,7 +44,7 @@
             background-color: #fff;
             outline: none;
             transition: all 0.2s;
-            appearance: none; /* Removes native OS styles */
+            appearance: none;
             -webkit-appearance: none;
         }
         
@@ -272,7 +271,6 @@
             const id = 'block-' + Date.now() + Math.random().toString(16).slice(2);
             const container = document.getElementById('timeBlocksContainer');
             
-            // FIXED: Reduced padding inside the card (p-3 to p-2 on mobile)
             const div = document.createElement('div');
             div.className = "bg-white p-2 sm:p-3 rounded-lg border border-slate-200 shadow-sm relative animate-[fadeIn_0.3s_ease-out]";
             div.id = id;
@@ -537,12 +535,21 @@
                     return [e.date, e.description, e.isPaid ? 'PAID' : 'UNPAID', blks, e.duration.toFixed(2), 'P' + e.earnings.toFixed(2)];
                 });
                 
+                // Calculate totals
+                const totalHrs = data.reduce((a,b)=>a+b.duration,0);
+                const totalPay = data.reduce((a,b)=>a+b.earnings,0);
+                const totalUnpaid = data.filter(e => !e.isPaid).reduce((a,b)=>a+b.earnings,0);
+
                 doc.autoTable({
                     startY: 38,
                     head: [['Date','Project','Status','Sessions','Hrs','Pay']],
                     body: body,
                     styles: { fontSize: 9 },
-                    foot: [['','','','Total', data.reduce((a,b)=>a+b.duration,0).toFixed(2), 'P' + data.reduce((a,b)=>a+b.earnings,0).toFixed(2)]]
+                    // Added totalUnpaid to the footer
+                    foot: [
+                        ['','','','Total', totalHrs.toFixed(2), 'P' + totalPay.toFixed(2)],
+                        ['','','','Total Unpaid', '', 'P' + totalUnpaid.toFixed(2)]
+                    ]
                 });
                 doc.save(filename + '.pdf');
             }
